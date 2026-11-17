@@ -2,7 +2,7 @@
 param([switch]$Yes)
 
 $ErrorActionPreference = 'Continue'
-$InstallDir = Join-Path $env:LOCALAPPDATA 'THLA-Christmas'
+$InstallDir = Join-Path $env:LOCALAPPDATA 'Luckyz-Christmas'
 $StatePath = Join-Path $InstallDir 'state.json'
 $StartupDir = [Environment]::GetFolderPath('Startup')
 $Utf8 = New-Object System.Text.UTF8Encoding $false
@@ -28,7 +28,7 @@ function Write-Json($path, $object) {
 }
 
 function Remove-Autostart($label) {
-    Remove-Item (Join-Path $StartupDir "THLA Christmas - $label.lnk") -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $StartupDir "Luckyz Christmas - $label.lnk") -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $InstallDir "autostart-$label.vbs") -Force -ErrorAction SilentlyContinue
 }
 
@@ -36,7 +36,7 @@ function Stop-Matching($pattern) {
     Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match $pattern } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
 
-if (-not (Test-Path $StatePath)) { Say 'Nothing to uninstall: no THLA Christmas install was found.' Yellow; return }
+if (-not (Test-Path $StatePath)) { Say 'Nothing to uninstall: no Luckyz Christmas install was found.' Yellow; return }
 $state = Get-Content $StatePath -Raw | ConvertFrom-Json
 $installed = @(); if ($state.PSObject.Properties['installed']) { $installed = @($state.installed) }
 if (-not (Ask "Remove: $($installed -join ', ')?")) { return }
@@ -51,13 +51,13 @@ if ($installed -contains 'terminal' -and $state.PSObject.Properties['terminalPat
         if (-not (Test-Path $path)) { continue }
         try {
             $settings = Read-Jsonc $path
-            if ($settings.PSObject.Properties['schemes']) { $settings.schemes = @($settings.schemes | Where-Object { $_.name -ne 'THLA Christmas' }) }
+            if ($settings.PSObject.Properties['schemes']) { $settings.schemes = @($settings.schemes | Where-Object { $_.name -ne 'Luckyz Christmas' }) }
             if ($settings.profiles -is [array]) { $settings.profiles = @($settings.profiles | Where-Object { $_.guid -notin $guids }) }
             else { $settings.profiles.list = @($settings.profiles.list | Where-Object { $_.guid -notin $guids }) }
             if ($settings.PSObject.Properties['defaultProfile'] -and $settings.defaultProfile -in $guids) { $settings.PSObject.Properties.Remove('defaultProfile') }
             Write-Json $path $settings
         }
-        catch { Say "Could not clean $path. A backup is next to it as settings.json.thla-backup." Yellow }
+        catch { Say "Could not clean $path. A backup is next to it as settings.json.luckyz-backup." Yellow }
     }
     Say 'Removed the Terminal profiles and color scheme.' Green
 }
@@ -73,7 +73,7 @@ if ($installed -contains 'vscode') {
             $local = Join-Path $env:LOCALAPPDATA 'Programs\Microsoft VS Code\bin\code.cmd'
             if (Test-Path $local) { $cli = [pscustomobject]@{ Source = $local } }
         }
-        if ($cli) { & $cli.Source --uninstall-extension thla.christmas-theme 2>&1 | Out-Null }
+        if ($cli) { & $cli.Source --uninstall-extension luckyz.christmas-theme 2>&1 | Out-Null }
     }
     foreach ($data in 'Code', 'VSCodium') {
         $path = Join-Path $env:APPDATA "$data\User\settings.json"
@@ -81,7 +81,7 @@ if ($installed -contains 'vscode') {
         try {
             $settings = Read-Jsonc $path
             foreach ($key in 'workbench.colorTheme', 'workbench.iconTheme') {
-                if ($settings.PSObject.Properties[$key] -and $settings.$key -in 'THLA Christmas', 'thla-christmas-icons') { $settings.PSObject.Properties.Remove($key) }
+                if ($settings.PSObject.Properties[$key] -and $settings.$key -in 'Luckyz Christmas', 'luckyz-christmas-icons') { $settings.PSObject.Properties.Remove($key) }
             }
             Write-Json $path $settings
         }
@@ -100,8 +100,8 @@ if ($installed -contains 'spotify') {
         $config = Split-Path (& $sp -c)
         & $sp config current_theme $theme color_scheme $(if ($prev) { $prev.scheme } else { '' }) | Out-Null
         & $sp config extensions $ext | Out-Null
-        Remove-Item (Join-Path $config 'Themes\thla-christmas') -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item (Join-Path $config 'Extensions\thla-snow.js') -Force -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $config 'Themes\luckyz-christmas') -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $config 'Extensions\luckyz-snow.js') -Force -ErrorAction SilentlyContinue
         Get-Process Spotify -ErrorAction SilentlyContinue | Stop-Process -Force
         Start-Sleep 2
         & $sp apply 2>&1 | Out-Null
@@ -111,7 +111,7 @@ if ($installed -contains 'spotify') {
 
 if ($installed -contains 'discord') {
     $css = Join-Path $env:APPDATA 'Vencord\settings\quickCss.css'
-    $backup = "$css.thla-backup"
+    $backup = "$css.luckyz-backup"
     if (Test-Path $backup) { Move-Item $backup $css -Force } else { [IO.File]::WriteAllText($css, '', $Utf8) }
     Say 'Removed the Discord theme. Vencord itself was left installed; use its installer to remove it.' Green
 }

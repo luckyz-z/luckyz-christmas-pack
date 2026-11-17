@@ -1,8 +1,8 @@
-(function thlaSnow() {
-  if (document.getElementById("thla-snow")) return;
+(function luckyzSnow() {
+  if (document.getElementById("luckyz-snow")) return;
 
   const canvas = document.createElement("canvas");
-  canvas.id = "thla-snow";
+  canvas.id = "luckyz-snow";
   document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d");
 
@@ -56,7 +56,7 @@
   document.addEventListener("click", (e) => {
     for (let i = 0; i < 5; i++) {
       const s = document.createElement("span");
-      s.className = "thla-pop";
+      s.className = "luckyz-pop";
       s.textContent = BITS[Math.floor(Math.random() * BITS.length)];
       s.style.left = e.clientX + "px";
       s.style.top = e.clientY + "px";

@@ -9,10 +9,11 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $Assets = Join-Path $Root 'assets'
-$InstallDir = Join-Path $env:LOCALAPPDATA 'THLA-Christmas'
+$InstallDir = Join-Path $env:LOCALAPPDATA 'Luckyz-Christmas'
 $StatePath = Join-Path $InstallDir 'state.json'
 $StartupDir = [Environment]::GetFolderPath('Startup')
 $Utf8 = New-Object System.Text.UTF8Encoding $false
+try { [Console]::OutputEncoding = $Utf8 } catch { }
 
 $Components = [ordered]@{
     terminal    = 'Windows Terminal: snow background, Christmas colors, festive PowerShell prompt'
@@ -30,15 +31,137 @@ if ($List) {
     return
 }
 
+$Fancy = [bool]($env:WT_SESSION -or $env:TERM_PROGRAM -or $env:ConEmuPID)
+$G = if ($Fancy) {
+    @{
+        tree = [char]::ConvertFromUtf32(0x1F384); gift = [char]::ConvertFromUtf32(0x1F381); santa = [char]::ConvertFromUtf32(0x1F385)
+        sock = [char]::ConvertFromUtf32(0x1F9E6); bell = [char]::ConvertFromUtf32(0x1F514); flake = [string][char]0x2744; star = [string][char]0x2B50
+    }
+}
+else {
+    @{ tree = '*'; gift = '+'; santa = '>'; sock = 'o'; bell = '!'; flake = '*'; star = '*' }
+}
+
 function Say($text, $color = 'Gray') { Write-Host $text -ForegroundColor $color }
-function Title($text) { Write-Host ''; Write-Host "== $text" -ForegroundColor Cyan }
+
+function Paint($segments) {
+    foreach ($seg in $segments) { Write-Host $seg[0] -NoNewline -ForegroundColor $seg[1] }
+    Write-Host ''
+}
+
+function Rule($width = 56) {
+    $colors = 'Red', 'White'
+    Write-Host '  ' -NoNewline
+    for ($i = 0; $i -lt $width; $i++) { Write-Host '=' -NoNewline -ForegroundColor $colors[$i % 2] }
+    Write-Host ''
+}
+
+function Title($text) {
+    Write-Host ''
+    Rule
+    Write-Host "  $($G.tree) " -NoNewline
+    Write-Host $text -ForegroundColor Green
+}
+
+function Show-Snow([int]$frames = 22) {
+    if ($Yes -or -not $Fancy) { return }
+    try {
+        $width = [Math]::Min([Console]::WindowWidth - 2, 70)
+        $height = 8
+        for ($i = 0; $i -lt $height; $i++) { Write-Host '' }
+        $top = [Console]::CursorTop - $height
+        $rand = New-Object System.Random
+        $marks = '*', '.', '+', '.'
+        $flakes = 1..28 | ForEach-Object { [pscustomobject]@{ X = $rand.Next(0, $width); Y = $rand.Next(0, $height); V = 1 + $rand.Next(0, 2); C = $marks[$rand.Next(0, 4)] } }
+        [Console]::CursorVisible = $false
+        for ($f = 0; $f -lt $frames; $f++) {
+            foreach ($s in $flakes) {
+                [Console]::SetCursorPosition($s.X + 2, $top + $s.Y)
+                [Console]::Write(' ')
+                $s.Y += $s.V
+                if ($s.Y -ge $height) { $s.Y = 0; $s.X = $rand.Next(0, $width) }
+                [Console]::SetCursorPosition($s.X + 2, $top + $s.Y)
+                [Console]::ForegroundColor = if ($s.V -eq 2) { 'White' } else { 'Cyan' }
+                [Console]::Write($s.C)
+            }
+            Start-Sleep -Milliseconds 70
+        }
+        [Console]::ResetColor()
+        for ($y = 0; $y -lt $height; $y++) { [Console]::SetCursorPosition(0, $top + $y); [Console]::Write(' ' * ($width + 4)) }
+        [Console]::SetCursorPosition(0, $top)
+    }
+    catch { }
+    finally { try { [Console]::CursorVisible = $true; [Console]::ResetColor() } catch { } }
+}
+
+function Show-Banner {
+    Show-Snow
+    $rand = New-Object System.Random
+    Write-Host ''
+    Paint @(, @(('              ' + $G.star), 'Yellow'))
+    $ornaments = 'Red', 'Yellow', 'Cyan', 'Magenta'
+    for ($row = 1; $row -le 7; $row++) {
+        $count = 2 * $row - 1
+        Write-Host (' ' * (14 - $row)) -NoNewline
+        Write-Host '/' -NoNewline -ForegroundColor DarkGreen
+        for ($c = 0; $c -lt $count; $c++) {
+            if ($rand.Next(0, 5) -eq 0) { Write-Host 'o' -NoNewline -ForegroundColor $ornaments[$rand.Next(0, 4)] }
+            else { Write-Host '^' -NoNewline -ForegroundColor Green }
+        }
+        Write-Host '\' -NoNewline -ForegroundColor DarkGreen
+        Write-Host ''
+    }
+    Paint @(, @('             |||', 'DarkYellow'))
+    Write-Host ''
+    Write-Host '  ' -NoNewline
+    $letters = 'L U C K Y Z   C H R I S T M A S   P A C K'.ToCharArray()
+    for ($i = 0; $i -lt $letters.Count; $i++) { Write-Host $letters[$i] -NoNewline -ForegroundColor $(if ($i % 2) { 'Green' } else { 'Red' }) }
+    Write-Host ''
+    $xmas = Get-Date -Month 12 -Day 25 -Hour 0 -Minute 0 -Second 0
+    if ((Get-Date) -gt $xmas.AddDays(1)) { $xmas = $xmas.AddYears(1) }
+    $days = [int][Math]::Ceiling(($xmas - (Get-Date)).TotalDays)
+    $line = if ($days -le 0) { 'Merry Christmas!' } else { "$days days until Christmas" }
+    Say "  $($G.flake) $line $($G.flake)" Yellow
+    Say '  Everything is optional, and every file that gets edited is backed up first.' DarkGray
+    Rule
+}
 
 function Ask($question, [bool]$default = $true) {
     if ($Yes) { return $default }
     $hint = if ($default) { 'Y/n' } else { 'y/N' }
-    $answer = Read-Host "$question [$hint]"
+    Write-Host "  $($G.santa) $question " -NoNewline -ForegroundColor Yellow
+    Write-Host "[$hint] " -NoNewline -ForegroundColor DarkGray
+    $answer = Read-Host
     if ([string]::IsNullOrWhiteSpace($answer)) { return $default }
     return $answer.Trim().ToLower().StartsWith('y')
+}
+
+function Select-Presents {
+    $keys = @($Components.Keys)
+    $on = @{}
+    foreach ($k in $keys) { $on[$k] = $true }
+    if ($Yes) { return $keys }
+    while ($true) {
+        Write-Host ''
+        Say "  $($G.gift) Pick your presents" Cyan
+        for ($i = 0; $i -lt $keys.Count; $i++) {
+            $mark = if ($on[$keys[$i]]) { '[x]' } else { '[ ]' }
+            $color = if ($on[$keys[$i]]) { 'Green' } else { 'DarkGray' }
+            Write-Host ("   {0} {1}  {2}" -f $mark, ($i + 1), $Components[$keys[$i]]) -ForegroundColor $color
+        }
+        Write-Host ''
+        Write-Host '  Type numbers to toggle (like 2,5), A = all, N = none, Enter = unwrap: ' -NoNewline -ForegroundColor Yellow
+        $answer = Read-Host
+        if ([string]::IsNullOrWhiteSpace($answer)) { break }
+        $answer = $answer.Trim().ToLower()
+        if ($answer -eq 'a') { foreach ($k in $keys) { $on[$k] = $true }; continue }
+        if ($answer -eq 'n') { foreach ($k in $keys) { $on[$k] = $false }; continue }
+        foreach ($token in ($answer -split '[,\s]+')) {
+            $n = 0
+            if ([int]::TryParse($token, [ref]$n) -and $n -ge 1 -and $n -le $keys.Count) { $on[$keys[$n - 1]] = -not $on[$keys[$n - 1]] }
+        }
+    }
+    return @($keys | Where-Object { $on[$_] })
 }
 
 function Get-State {
@@ -60,7 +183,7 @@ function Set-StateValue($name, $value) {
 
 function Backup-File($path) {
     if (-not (Test-Path $path)) { return }
-    $backup = "$path.thla-backup"
+    $backup = "$path.luckyz-backup"
     if (-not (Test-Path $backup)) { Copy-Item $path $backup -Force }
 }
 
@@ -100,7 +223,7 @@ function New-Autostart($label, $scriptPath, $delaySeconds, $python = $false, $ex
     $lines = @("WScript.Sleep $($delaySeconds * 1000)", "CreateObject(""WScript.Shell"").Run ""$command"", 0, False")
     [IO.File]::WriteAllLines($launcher, $lines)
     $shell = New-Object -ComObject WScript.Shell
-    $link = $shell.CreateShortcut((Join-Path $StartupDir "THLA Christmas - $label.lnk"))
+    $link = $shell.CreateShortcut((Join-Path $StartupDir "Luckyz Christmas - $label.lnk"))
     $link.TargetPath = Join-Path $env:windir 'System32\wscript.exe'
     $link.Arguments = "`"$launcher`""
     $link.WindowStyle = 7
@@ -124,7 +247,7 @@ function Install-Terminal {
     $prompt = Join-Path $dir 'christmas-prompt.ps1'
     $makeDefault = Ask 'Make "Christmas PowerShell" your default Terminal profile?' $false
     $scheme = [pscustomobject][ordered]@{
-        name = 'THLA Christmas'; background = '#0A1913'; foreground = '#FFF4E0'; cursorColor = '#E7BF5A'; selectionBackground = '#C8323F'
+        name = 'Luckyz Christmas'; background = '#0A1913'; foreground = '#FFF4E0'; cursorColor = '#E7BF5A'; selectionBackground = '#C8323F'
         black = '#10241C'; red = '#E56B73'; green = '#6FCF97'; yellow = '#E7BF5A'; blue = '#8FB8E8'; purple = '#D79AC0'; cyan = '#7FD8C8'; white = '#FFF4E0'
         brightBlack = '#4E6B5C'; brightRed = '#FF8A90'; brightGreen = '#8FE3AE'; brightYellow = '#F5D98A'; brightBlue = '#B5D2F2'
         brightPurple = '#E7BAD6'; brightCyan = '#A8EADF'; brightWhite = '#FFFFFF'
@@ -138,7 +261,7 @@ function Install-Terminal {
             Backup-File $path
             $settings = Read-Jsonc $path
             $schemes = @(); if ($settings.PSObject.Properties['schemes']) { $schemes = @($settings.schemes) }
-            $schemes = @($schemes | Where-Object { $_.name -ne 'THLA Christmas' }) + $scheme
+            $schemes = @($schemes | Where-Object { $_.name -ne 'Luckyz Christmas' }) + $scheme
             Set-Property $settings 'schemes' $schemes
             $list = if ($settings.profiles -is [array]) { @($settings.profiles) } else { @($settings.profiles.list) }
             foreach ($p in $profiles) {
@@ -146,7 +269,7 @@ function Install-Terminal {
                 $entry = [pscustomobject][ordered]@{
                     name = $p.name; guid = $p.guid; commandline = $p.commandline; hidden = $false
                     backgroundImage = $gif; backgroundImageOpacity = 0.85; backgroundImageStretchMode = 'uniformToFill'
-                    colorScheme = 'THLA Christmas'
+                    colorScheme = 'Luckyz Christmas'
                     font = [pscustomobject][ordered]@{ face = 'Cascadia Mono, Segoe UI Emoji, Segoe UI Symbol'; size = 12 }
                     padding = '12'
                 }
@@ -210,7 +333,7 @@ function Get-CodeClis {
 function Install-VSCode {
     $clis = Get-CodeClis
     if (-not $clis) { Say 'VS Code was not found. Install it from https://code.visualstudio.com and run this again.' Yellow; return $false }
-    $vsix = Join-Path $Assets 'vscode\thla-christmas-1.0.0.vsix'
+    $vsix = Join-Path $Assets 'vscode\luckyz-christmas-1.0.0.vsix'
     $apply = Ask 'Switch VS Code to the Christmas color theme and icons now?'
     foreach ($c in $clis) {
         & $c.Cli --install-extension $vsix --force 2>&1 | Out-Null
@@ -222,14 +345,14 @@ function Install-VSCode {
             Backup-File $path
             try {
                 $settings = if (Test-Path $path) { Read-Jsonc $path } else { [pscustomobject]@{} }
-                Set-Property $settings 'workbench.colorTheme' 'THLA Christmas'
-                Set-Property $settings 'workbench.iconTheme' 'thla-christmas-icons'
+                Set-Property $settings 'workbench.colorTheme' 'Luckyz Christmas'
+                Set-Property $settings 'workbench.iconTheme' 'luckyz-christmas-icons'
                 Write-Json $path $settings
             }
             catch { Say "Could not edit $path. Pick the theme with Ctrl+K Ctrl+T instead." Yellow }
         }
     }
-    Say 'If the theme does not switch by itself, press Ctrl+K Ctrl+T and choose THLA Christmas.' Gray
+    Say 'If the theme does not switch by itself, press Ctrl+K Ctrl+T and choose Luckyz Christmas.' Gray
     return $true
 }
 
@@ -258,19 +381,23 @@ function Install-Spotify {
         extensions = (& $sp config extensions)
     }
     Set-StateValue 'spicetifyPrevious' $previous
-    $themeDir = Join-Path $config 'Themes\thla-christmas'
+    $themeDir = Join-Path $config 'Themes\luckyz-christmas'
     New-Item -ItemType Directory $themeDir -Force | Out-Null
     Copy-Item (Join-Path $Assets 'spotify\color.ini'), (Join-Path $Assets 'spotify\user.css') $themeDir -Force
     $extDir = Join-Path $config 'Extensions'
     New-Item -ItemType Directory $extDir -Force | Out-Null
-    Copy-Item (Join-Path $Assets 'spotify\thla-snow.js') $extDir -Force
-    $existing = @(($previous.extensions -split '\|') | Where-Object { $_ -and $_ -ne 'thla-snow.js' })
-    & $sp config current_theme thla-christmas color_scheme christmas inject_css 1 replace_colors 1 overwrite_assets 1 | Out-Null
-    & $sp config extensions (($existing + 'thla-snow.js') -join '|') | Out-Null
+    Copy-Item (Join-Path $Assets 'spotify\luckyz-snow.js') $extDir -Force
+    $existing = @(($previous.extensions -split '\|') | Where-Object { $_ -and $_ -ne 'luckyz-snow.js' })
+    & $sp config current_theme luckyz-christmas color_scheme christmas inject_css 1 replace_colors 1 overwrite_assets 1 | Out-Null
+    & $sp config extensions (($existing + 'luckyz-snow.js') -join '|') | Out-Null
     Get-Process Spotify -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep 2
     & $sp backup apply 2>&1 | Out-Null
-    Say 'Spotify is themed. Open Spotify to see it.' Green
+    Say 'Spotify is themed.' Green
+    if (Ask 'Open the Christmas playlist that goes with this pack in Spotify now?') {
+        Start-Process 'spotify:playlist:4DxlVuyC6plRuGTdobl8MP'
+        Say 'Opening the playlist in Spotify.' Green
+    }
     return $true
 }
 
@@ -316,7 +443,7 @@ function Install-Discord {
     New-Item -ItemType Directory $vencord -Force | Out-Null
     $css = Join-Path $vencord 'quickCss.css'
     Backup-File $css
-    Copy-Item (Join-Path $Assets 'discord\thla-christmas.css') $css -Force
+    Copy-Item (Join-Path $Assets 'discord\luckyz-christmas.css') $css -Force
     $settingsPath = Join-Path $vencord 'settings.json'
     $settings = if (Test-Path $settingsPath) { Get-Content $settingsPath -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
     Set-Property $settings 'useQuickCss' $true
@@ -346,34 +473,39 @@ function Install-Icue {
     return $true
 }
 
+Show-Banner
+
 $selected = @()
 if ($All) { $selected = @($Components.Keys) }
 elseif ($Only) { $selected = @($Only | ForEach-Object { $_.ToLower() } | Where-Object { $Components.Contains($_) }) }
-else {
-    Say 'THLA Christmas Pack' Cyan
-    Say 'Pick what you want. Everything is optional and every file that gets edited is backed up first.'
-    foreach ($key in $Components.Keys) { if (Ask "$($Components[$key])?") { $selected += $key } }
-}
+else { $selected = @(Select-Presents) }
 
-if (-not $selected) { Say 'Nothing selected.' Yellow; return }
+if (-not $selected) { Say "  $($G.sock) Nothing selected. Maybe next year!" Yellow; return }
 
 New-Item -ItemType Directory $InstallDir -Force | Out-Null
 Copy-Item (Join-Path $Root 'uninstall.ps1') $InstallDir -Force -ErrorAction SilentlyContinue
 
 $results = [ordered]@{}
+$step = 0
 foreach ($key in $selected) {
-    Title $Components[$key]
+    $step++
+    Title ("[{0}/{1}] Wrapping: {2}" -f $step, $selected.Count, $Components[$key])
     try {
         $ok = & "Install-$((Get-Culture).TextInfo.ToTitleCase($key))"
         $results[$key] = [bool]($ok | Select-Object -Last 1)
         if ($results[$key]) { $state = Get-State; $done = @(); if ($state.PSObject.Properties['installed']) { $done = @($state.installed) }; Set-StateValue 'installed' @($done + $key | Select-Object -Unique) }
     }
-    catch { Say "Failed: $($_.Exception.Message)" Red; $results[$key] = $false }
+    catch { Say "  Failed: $($_.Exception.Message)" Red; $results[$key] = $false }
 }
 
-Title 'Summary'
+Write-Host ''
+Rule
+Say "  $($G.bell) Your presents" Cyan
 foreach ($key in $results.Keys) {
-    if ($results[$key]) { Say ("  done     {0}" -f $key) Green } else { Say ("  skipped  {0}" -f $key) Yellow }
+    if ($results[$key]) { Say ("   {0}  unwrapped  {1}" -f $G.gift, $key) Green }
+    else { Say ("   {0}  coal       {1}  (skipped)" -f $G.sock, $key) Yellow }
 }
-Say ''
-Say "To remove everything later run: powershell -ExecutionPolicy Bypass -File `"$InstallDir\uninstall.ps1`""
+Write-Host ''
+Show-Snow 14
+Say "  $($G.tree) Merry Christmas! $($G.tree)" Red
+Say "  To undo everything later: powershell -ExecutionPolicy Bypass -File `"$InstallDir\uninstall.ps1`"" DarkGray

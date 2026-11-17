@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 588" width="880" height="588">
+<style>text{font-family:Consolas,'Cascadia Mono','DejaVu Sans Mono',monospace;font-size:15px}
+.sf{animation:sfall 4s linear infinite}@keyframes sfall{0%{transform:translateY(-10px);opacity:0}20%{opacity:.8}100%{transform:translateY(40px);opacity:0}}</style>
+<rect width="880" height="588" rx="12" fill="#0a1913"/><rect width="880" height="34" rx="12" fill="#10241c"/><rect y="20" width="880" height="14" fill="#10241c"/>
+<circle cx="22" cy="17" r="6" fill="#e04b57"/><circle cx="42" cy="17" r="6" fill="#e7bf5a"/><circle cx="62" cy="17" r="6" fill="#35b070"/>
+<text x="440" y="22" text-anchor="middle" fill="#9fae9f" style="font-size:12px">install.cmd</text>
+<circle cx="729" cy="238" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.3s"/><circle cx="837" cy="555" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.5s"/><circle cx="605" cy="480" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.4s"/><circle cx="541" cy="131" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-3.5s"/><circle cx="748" cy="243" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.4s"/><circle cx="617" cy="359" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-0.8s"/><circle cx="727" cy="268" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.4s"/><circle cx="837" cy="52" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-3.1s"/><circle cx="488" cy="380" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-3.6s"/><circle cx="797" cy="353" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.5s"/><circle cx="679" cy="336" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.7s"/><circle cx="730" cy="95" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.7s"/><circle cx="683" cy="138" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.0s"/><circle cx="525" cy="496" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-3.1s"/><circle cx="674" cy="118" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.7s"/><circle cx="635" cy="458" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-0.8s"/><circle cx="828" cy="312" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.0s"/><circle cx="568" cy="58" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.2s"/><circle cx="608" cy="409" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.0s"/><circle cx="711" cy="377" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.0s"/><circle cx="690" cy="471" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.9s"/><circle cx="788" cy="526" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.9s"/><circle cx="552" cy="426" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.2s"/><circle cx="719" cy="371" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.6s"/><circle cx="797" cy="425" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.4s"/><circle cx="643" cy="447" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.9s"/><circle cx="560" cy="337" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-0.0s"/><circle cx="710" cy="98" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-0.1s"/><circle cx="771" cy="154" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.9s"/><circle cx="665" cy="549" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-0.2s"/><circle cx="578" cy="198" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-2.5s"/><circle cx="696" cy="543" r="1.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.9s"/><circle cx="531" cy="419" r="2" fill="#fff" opacity=".7" class="sf" style="animation-delay:-3.8s"/><circle cx="828" cy="289" r="2.5" fill="#fff" opacity=".7" class="sf" style="animation-delay:-1.3s"/>
+<text x="28" y="56" xml:space="preserve" fill="#e7bf5a">            *</text>
+<text x="28" y="78" xml:space="preserve" fill="#35b070">           /^\</text>
+<text x="28" y="100" xml:space="preserve" fill="#35b070">          /^^^\</text>
+<text x="28" y="122" xml:space="preserve" fill="#35b070">         /^^o^^\</text>
+<text x="28" y="144" xml:space="preserve" fill="#35b070">        /o^^^^^^\</text>
+<text x="28" y="166" xml:space="preserve" fill="#35b070">       /^^^^o^^^o\</text>
+<text x="28" y="188" xml:space="preserve" fill="#35b070">      /o^^^^^^^^^^\</text>
+<text x="28" y="210" xml:space="preserve" fill="#a37c20">            |||</text>
+<text x="28" y="232" xml:space="preserve" fill="#fff4e0"></text>
+<text x="28" y="254" xml:space="preserve" fill="#e04b57">  L U C K Y Z   C H R I S T M A S   P A C K</text>
+<text x="28" y="276" xml:space="preserve" fill="#e7bf5a">  * 38 days until Christmas *</text>
+<text x="28" y="298" xml:space="preserve" fill="#e04b57">  ========================================================</text>
+<text x="28" y="320" xml:space="preserve" fill="#fff4e0"></text>
+<text x="28" y="342" xml:space="preserve" fill="#7fd8d8">  Pick your presents</text>
+<text x="28" y="364" xml:space="preserve" fill="#35b070">   [x] 1  Windows Terminal: snow background, Christmas colors</text>
+<text x="28" y="386" xml:space="preserve" fill="#35b070">   [x] 2  Taskbar lights: string lights and snow drift</text>
+<text x="28" y="408" xml:space="preserve" fill="#6b7a72">   [ ] 3  Transparent taskbar (installs TranslucentTB)</text>
+<text x="28" y="430" xml:space="preserve" fill="#35b070">   [x] 4  Spotify now-playing desktop widget</text>
+<text x="28" y="452" xml:space="preserve" fill="#35b070">   [x] 5  VS Code: Christmas theme and file icons</text>
+<text x="28" y="474" xml:space="preserve" fill="#35b070">   [x] 6  Spotify: Christmas theme and snow</text>
+<text x="28" y="496" xml:space="preserve" fill="#35b070">   [x] 7  Discord: Christmas theme (uses Vencord)</text>
+<text x="28" y="518" xml:space="preserve" fill="#6b7a72">   [ ] 8  Corsair iCUE: Christmas lighting</text>
+<text x="28" y="540" xml:space="preserve" fill="#fff4e0"></text>
+<text x="28" y="562" xml:space="preserve" fill="#e7bf5a">  Type numbers to toggle (like 2,5), A = all, N = none, Enter = unwrap:</text>
+</svg>

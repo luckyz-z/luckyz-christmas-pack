@@ -11,13 +11,13 @@ $null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaPro
 $null = [Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime]
 
 if (-not $SnapshotPath) {
-    $script:mutex = New-Object System.Threading.Mutex($false, 'Global\THLA-ChristmasNowPlaying')
+    $script:mutex = New-Object System.Threading.Mutex($false, 'Global\Luckyz-ChristmasNowPlaying')
     if (-not $script:mutex.WaitOne(0)) { exit }
 }
 
 Add-Type @'
 using System; using System.Runtime.InteropServices;
-public class ThlaWin {
+public class DeskWin {
   [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
   [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr h, int i, int v);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint f);
@@ -54,13 +54,13 @@ function Get-NowPlaying {
 
 $script:artReady = $false
 try {
-    $dll = Join-Path $PSScriptRoot 'ThlaArt.dll'
+    $dll = Join-Path $PSScriptRoot 'NowPlayingArt.dll'
     if (-not (Test-Path $dll)) {
         $net = "$env:windir\Microsoft.NET\Framework64\v4.0.30319"
         $winmd = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\UnionMetadata" -Recurse -Filter Windows.winmd -ErrorAction SilentlyContinue |
             Where-Object { $_.DirectoryName -notmatch 'Facade' } | Sort-Object FullName -Descending | Select-Object -First 1
         if ($winmd) {
-            & "$net\csc.exe" /nologo /target:library /out:$dll /reference:$($winmd.FullName) /reference:"$net\System.Runtime.WindowsRuntime.dll" /reference:"$net\System.Runtime.dll" /reference:"$net\System.Core.dll" (Join-Path $PSScriptRoot 'ThlaArt.cs') | Out-Null
+            & "$net\csc.exe" /nologo /target:library /out:$dll /reference:$($winmd.FullName) /reference:"$net\System.Runtime.WindowsRuntime.dll" /reference:"$net\System.Runtime.dll" /reference:"$net\System.Core.dll" (Join-Path $PSScriptRoot 'NowPlayingArt.cs') | Out-Null
         }
     }
     if (Test-Path $dll) { Add-Type -Path $dll; $script:artReady = $true }
@@ -69,7 +69,7 @@ try {
 function Get-ArtBitmap($props) {
     try {
         if (-not $script:artReady) { return $null }
-        $bytes = [ThlaArt]::Get()
+        $bytes = [NowPlayingArt]::Get()
         if (-not $bytes) { return $null }
         $ms = New-Object System.IO.MemoryStream(, $bytes)
         $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
@@ -199,14 +199,14 @@ $win.Add_Loaded({
         'BottomLeft'  { $win.Left = $left + $Margin;       $win.Top = $bottom - $h - $Margin }
     }
     $hwnd = (New-Object Windows.Interop.WindowInteropHelper $win).Handle
-    $ex = [ThlaWin]::GetWindowLong($hwnd, -20)
-    [void][ThlaWin]::SetWindowLong($hwnd, -20, ($ex -bor 0x80 -bor 0x08000000 -bor 0x20))
+    $ex = [DeskWin]::GetWindowLong($hwnd, -20)
+    [void][DeskWin]::SetWindowLong($hwnd, -20, ($ex -bor 0x80 -bor 0x08000000 -bor 0x20))
     $script:hwnd = $hwnd
 })
 
 Update-Card
 $tick = New-Object Windows.Threading.DispatcherTimer; $tick.Interval = [TimeSpan]::FromSeconds(1)
-$tick.Add_Tick({ Update-Card; if ($script:hwnd) { [void][ThlaWin]::SetWindowPos($script:hwnd, [IntPtr]1, 0, 0, 0, 0, 0x13) } })
+$tick.Add_Tick({ Update-Card; if ($script:hwnd) { [void][DeskWin]::SetWindowPos($script:hwnd, [IntPtr]1, 0, 0, 0, 0, 0x13) } })
 $flakeTimer = New-Object Windows.Threading.DispatcherTimer; $flakeTimer.Interval = [TimeSpan]::FromMilliseconds(50)
 $ft = 0.0
 $flakeTimer.Add_Tick({

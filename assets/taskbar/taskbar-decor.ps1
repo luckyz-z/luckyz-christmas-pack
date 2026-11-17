@@ -1,7 +1,7 @@
 ﻿param([string]$SnapshotPath = '')
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 if (-not $SnapshotPath) {
-    $script:mutex = New-Object System.Threading.Mutex($false, 'Global\THLA-ChristmasTaskbarDecor')
+    $script:mutex = New-Object System.Threading.Mutex($false, 'Global\Luckyz-ChristmasTaskbarDecor')
     if (-not $script:mutex.WaitOne(0)) { exit }
 }
 Add-Type @'
