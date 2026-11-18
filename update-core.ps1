@@ -123,7 +123,9 @@ try {
     else {
         $verb = if ($mode -eq 'repair') { 'Repairing' } else { 'Updating' }
         Say "  ${verb}: $($parts -join ', ')" Cyan
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer -Update -Only ($parts -join ',')
+        $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installer, '-Update', '-Only', ($parts -join ','))
+        if ($mode -eq 'repair') { $arguments += '-Repair' }
+        & powershell.exe @arguments
     }
     if ($LASTEXITCODE -eq 0) { Say '  All done. Some apps (Spotify, Discord, VS Code) may need a restart to show the changes.' Green }
     else { Say '  Finished, but some parts did not complete. See the messages above, then run update.ps1 again.' Yellow }
