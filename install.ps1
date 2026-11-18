@@ -4,7 +4,8 @@ param(
     [switch]$All,
     [switch]$Yes,
     [switch]$List,
-    [switch]$Update
+    [switch]$Update,
+    [switch]$Repair
 )
 
 $ErrorActionPreference = 'Stop'
@@ -503,10 +504,44 @@ function Install-DesktopSpotify {
 function Get-SpicetifyConfigDir($sp) {
     $ErrorActionPreference = 'Continue'
     $dir = $null
-    try { $dir = (& $sp config-dir | Select-Object -First 1) } catch { }
+    try { $dir = (& $sp path userdata | Select-Object -First 1) } catch { }
+    if (-not $dir) {
+        try {
+            $file = (& $sp -c | Select-Object -First 1)
+            if ($file) { $dir = Split-Path "$file" }
+        }
+        catch { }
+    }
     if ($dir) { $dir = "$dir".Trim() }
     if (-not $dir -or -not (Test-Path $dir)) { $dir = Join-Path $env:APPDATA 'spicetify' }
     return $dir
+}
+
+function Invoke-Capture {
+    $ErrorActionPreference = 'Continue'
+    $program, $rest = $args
+    $lines = @(& $program @rest 2>&1 | ForEach-Object { "$_" })
+    return [pscustomobject]@{ Exit = $LASTEXITCODE; Text = (($lines -join "`n") -replace '\x1b\[[0-9;?]*[A-Za-z]', '') }
+}
+
+function Invoke-SpicetifyApply($sp) {
+    if ($Repair) { $attempts = @(, @('restore', 'backup', 'apply')) }
+    else { $attempts = @(@('backup', 'apply'), @('restore', 'backup', 'apply')) }
+    $last = ''
+    for ($i = 0; $i -lt $attempts.Count; $i++) {
+        $result = Invoke-Capture $sp @($attempts[$i])
+        $last = $result.Text
+        $failed = ($result.Exit -ne 0) -or ($result.Text -match '(?im)^\s*(error|fatal)\b')
+        if (-not $failed) { return $true }
+        if ($i -lt $attempts.Count - 1) { Say '  Spicetify reported a problem. Trying a clean re-apply...' Yellow }
+    }
+    $detail = (($last -split "`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Last 4) -join ' | '
+    throw "Spicetify could not apply the theme. It said: $detail"
+}
+
+function Test-SpotifyThemed {
+    $css = Join-Path $env:APPDATA 'Spotify\Apps\xpui\user.css'
+    return ((Test-Path $css) -and (Select-String -Path $css -Pattern 'luckyz-snow' -Quiet))
 }
 
 function Get-Spicetify {
@@ -546,13 +581,16 @@ function Install-Spotify {
     $extDir = Join-Path $config 'Extensions'
     New-Item -ItemType Directory $extDir -Force | Out-Null
     Copy-Item (Join-Path $Assets 'spotify\luckyz-snow.js') $extDir -Force
-    $existing = @(($previous.extensions -split '\|') | Where-Object { $_ -and $_ -ne 'luckyz-snow.js' })
+    $existing = @(($previous.extensions -split '[\s|]+') | Where-Object { $_ -and $_ -ne 'luckyz-snow.js' })
     & $sp config current_theme luckyz-christmas color_scheme christmas inject_css 1 replace_colors 1 overwrite_assets 1 | Out-Null
     & $sp config extensions (($existing + 'luckyz-snow.js') -join '|') | Out-Null
+    $wasRunning = [bool](Get-Process Spotify -ErrorAction SilentlyContinue)
     Get-Process Spotify -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep 2
-    Invoke-Quiet $sp backup apply
+    [void](Invoke-SpicetifyApply $sp)
+    if (-not (Test-SpotifyThemed)) { throw 'Spicetify finished, but the Christmas theme is not in Spotify. Run update.cmd and choose Repair.' }
     Say 'Spotify is themed.' Green
+    if ($wasRunning) { Start-Process $spotify }
     if (Ask 'Open the Christmas playlist that goes with this pack in Spotify now?') {
         Start-Process 'spotify:playlist:4DxlVuyC6plRuGTdobl8MP'
         Say 'Opening the playlist in Spotify.' Green

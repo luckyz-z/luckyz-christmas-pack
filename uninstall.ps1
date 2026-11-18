@@ -18,7 +18,14 @@ function Invoke-Quiet {
 function Get-SpicetifyConfigDir($sp) {
     $ErrorActionPreference = 'Continue'
     $dir = $null
-    try { $dir = (& $sp config-dir | Select-Object -First 1) } catch { }
+    try { $dir = (& $sp path userdata | Select-Object -First 1) } catch { }
+    if (-not $dir) {
+        try {
+            $file = (& $sp -c | Select-Object -First 1)
+            if ($file) { $dir = Split-Path "$file" }
+        }
+        catch { }
+    }
     if ($dir) { $dir = "$dir".Trim() }
     if (-not $dir -or -not (Test-Path $dir)) { $dir = Join-Path $env:APPDATA 'spicetify' }
     return $dir
