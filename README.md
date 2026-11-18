@@ -120,6 +120,16 @@ Part names: `terminal`, `taskbar`, `translucent`, `widget`, `vscode`, `spotify`,
 
 </details>
 
+## 🔄 Update
+
+When a new version comes out:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Luckyz-Christmas\update.ps1"
+```
+
+You can also double-click `update.cmd` in this folder. It refreshes only the parts you installed and keeps your choices, such as which parts you picked and whether they start with Windows. Add `-Check` to just see whether an update exists, or `-Force` to reinstall the current version.
+
 ## 🧦 Uninstall
 
 ```powershell

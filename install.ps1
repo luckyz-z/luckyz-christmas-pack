@@ -49,6 +49,12 @@ else {
 
 function Say($text, $color = 'Gray') { Write-Host $text -ForegroundColor $color }
 
+function Invoke-Quiet {
+    $ErrorActionPreference = 'Continue'
+    $program, $rest = $args
+    & $program @rest 2>&1 | Out-Null
+}
+
 function Paint($segments) {
     foreach ($seg in $segments) { Write-Host $seg[0] -NoNewline -ForegroundColor $seg[1] }
     Write-Host ''
@@ -347,7 +353,7 @@ function Install-VSCode {
     $vsix = Join-Path $Assets 'vscode\luckyz-christmas-1.0.0.vsix'
     $apply = Ask 'Switch VS Code to the Christmas color theme and icons now?'
     foreach ($c in $clis) {
-        & $c.Cli --install-extension $vsix --force 2>&1 | Out-Null
+        Invoke-Quiet $c.Cli --install-extension $vsix --force
         Say "Installed the extension for $($c.Data)." Green
         if ($apply) {
             $dir = Join-Path $env:APPDATA "$($c.Data)\User"
@@ -403,7 +409,7 @@ function Install-Spotify {
     & $sp config extensions (($existing + 'luckyz-snow.js') -join '|') | Out-Null
     Get-Process Spotify -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep 2
-    & $sp backup apply 2>&1 | Out-Null
+    Invoke-Quiet $sp backup apply
     Say 'Spotify is themed.' Green
     if (Ask 'Open the Christmas playlist that goes with this pack in Spotify now?') {
         Start-Process 'spotify:playlist:4DxlVuyC6plRuGTdobl8MP'
@@ -445,7 +451,8 @@ function Install-Discord {
             foreach ($b in $needs) {
                 Get-Process $b.Process -ErrorAction SilentlyContinue | Stop-Process -Force
                 Start-Sleep 2
-                & $exe -install -branch $b.Name 2>&1 | Out-Null
+                Invoke-Quiet $exe -install -branch $b.Name
+                if (-not (Test-VencordPatched $b)) { Say "Vencord could not patch Discord ($($b.Name)). Close Discord completely and run this again." Yellow }
             }
             Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -460,7 +467,7 @@ function Install-Discord {
     Set-Property $settings 'useQuickCss' $true
     Write-Json $settingsPath $settings
     foreach ($b in $branches) {
-        $update = Join-Path $env:LOCALAPPDATA "$($b.Dir)\Update.exe"
+        $updater = Join-Path $env:LOCALAPPDATA "$($b.Dir)\Update.exe"
         if ((Test-Path $updater) -and -not (Get-Process $b.Process -ErrorAction SilentlyContinue)) { Start-Process $updater -ArgumentList '--processStart', "$($b.Process).exe" }
     }
     Say 'Discord theme installed. Press Ctrl+R in Discord if it does not appear.' Green
@@ -471,10 +478,10 @@ function Install-Icue {
     $python = Get-Command python -ErrorAction SilentlyContinue
     if (-not $python) { Say 'Python 3 is needed for the lighting effect. Install it from python.org and run this again.' Yellow; return $false }
     if (-not (Get-Process iCUE -ErrorAction SilentlyContinue)) { Say 'iCUE does not seem to be running. Start it, and turn on Settings > Enable SDK.' Yellow }
-    & $python.Source -c 'import cuesdk' 2>&1 | Out-Null
+    Invoke-Quiet $python.Source -c 'import cuesdk'
     if ($LASTEXITCODE -ne 0) {
         if (-not (Ask 'Install Corsair''s cuesdk Python library from PyPI?')) { return $false }
-        & $python.Source -m pip install --user --quiet cuesdk 2>&1 | Out-Null
+        Invoke-Quiet $python.Source -m pip install --user --quiet cuesdk
     }
     $dir = Copy-Assets 'icue'
     $script = Join-Path $dir 'christmas_lights.py'
