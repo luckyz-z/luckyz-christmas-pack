@@ -122,13 +122,23 @@ Part names: `terminal`, `taskbar`, `translucent`, `widget`, `vscode`, `spotify`,
 
 ## 🔄 Update
 
-When a new version comes out:
+When a new version comes out, run this (or double-click `update.cmd` in the folder):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Luckyz-Christmas\update.ps1"
 ```
 
-You can also double-click `update.cmd` in this folder. It refreshes only the parts you installed and keeps your choices, such as which parts you picked and whether they start with Windows. Add `-Check` to just see whether an update exists, or `-Force` to reinstall the current version.
+It asks what you want to do:
+
+| Choice | What it does |
+| :-: | --- |
+| **1** | **Update** the parts you installed. This is the default, and it also retries anything that failed last time |
+| **2** | **Full install**: the present checklist again, to add or change parts |
+| **3** | **Repair**: reinstall everything you have, even if it is up to date |
+
+You never have to download the updater again. `update.ps1` fetches the newest update logic from GitHub every time it runs, so new options show up on their own, and it falls back to the copy on your PC if you are offline.
+
+For scripts: `-Check` only reports whether an update exists, `-Yes` updates without asking, `-Full` or `-Repair` skip the menu, and `-Force` reinstalls the current version.
 
 ## 🧦 Uninstall
 

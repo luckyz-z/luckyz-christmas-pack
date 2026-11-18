@@ -569,7 +569,7 @@ else { $selected = @(Select-Presents) }
 if (-not $selected) { Say "  $($G.sock) Nothing selected. Maybe next year!" Yellow; return }
 
 New-Item -ItemType Directory $InstallDir -Force | Out-Null
-foreach ($tool in 'uninstall.ps1', 'update.ps1', 'update.cmd') { Copy-Item (Join-Path $Root $tool) $InstallDir -Force -ErrorAction SilentlyContinue }
+foreach ($tool in 'uninstall.ps1', 'update.ps1', 'update-core.ps1', 'update.cmd') { Copy-Item (Join-Path $Root $tool) $InstallDir -Force -ErrorAction SilentlyContinue }
 Set-StateValue 'version' $Version
 
 $results = [ordered]@{}
