@@ -9,6 +9,12 @@ $Utf8 = New-Object System.Text.UTF8Encoding $false
 
 function Say($text, $color = 'Gray') { Write-Host $text -ForegroundColor $color }
 
+function Invoke-Quiet {
+    $ErrorActionPreference = 'Continue'
+    $program, $rest = $args
+    & $program @rest 2>&1 | Out-Null
+}
+
 function Ask($question) {
     if ($Yes) { return $true }
     $answer = Read-Host "$question [Y/n]"
@@ -73,7 +79,7 @@ if ($installed -contains 'vscode') {
             $local = Join-Path $env:LOCALAPPDATA 'Programs\Microsoft VS Code\bin\code.cmd'
             if (Test-Path $local) { $cli = [pscustomobject]@{ Source = $local } }
         }
-        if ($cli) { & $cli.Source --uninstall-extension luckyz.christmas-theme 2>&1 | Out-Null }
+        if ($cli) { Invoke-Quiet $cli.Source --uninstall-extension luckyz.christmas-theme }
     }
     foreach ($data in 'Code', 'VSCodium') {
         $path = Join-Path $env:APPDATA "$data\User\settings.json"
@@ -104,7 +110,7 @@ if ($installed -contains 'spotify') {
         Remove-Item (Join-Path $config 'Extensions\luckyz-snow.js') -Force -ErrorAction SilentlyContinue
         Get-Process Spotify -ErrorAction SilentlyContinue | Stop-Process -Force
         Start-Sleep 2
-        & $sp apply 2>&1 | Out-Null
+        Invoke-Quiet $sp apply
         Say 'Restored your previous Spotify theme.' Green
     }
 }
