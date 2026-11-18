@@ -500,6 +500,15 @@ function Install-DesktopSpotify {
     return $true
 }
 
+function Get-SpicetifyConfigDir($sp) {
+    $ErrorActionPreference = 'Continue'
+    $dir = $null
+    try { $dir = (& $sp config-dir | Select-Object -First 1) } catch { }
+    if ($dir) { $dir = "$dir".Trim() }
+    if (-not $dir -or -not (Test-Path $dir)) { $dir = Join-Path $env:APPDATA 'spicetify' }
+    return $dir
+}
+
 function Get-Spicetify {
     $c = Get-Command spicetify -ErrorAction SilentlyContinue
     if ($c) { return $c.Source }
@@ -524,7 +533,7 @@ function Install-Spotify {
         $sp = Get-Spicetify
         if (-not $sp) { Say 'Spicetify did not install.' Yellow; return $false }
     }
-    $config = Split-Path (& $sp -c)
+    $config = Get-SpicetifyConfigDir $sp
     $previous = [pscustomobject]@{
         theme = (& $sp config current_theme)
         scheme = (& $sp config color_scheme)

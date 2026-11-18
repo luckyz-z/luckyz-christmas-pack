@@ -15,6 +15,15 @@ function Invoke-Quiet {
     & $program @rest 2>&1 | Out-Null
 }
 
+function Get-SpicetifyConfigDir($sp) {
+    $ErrorActionPreference = 'Continue'
+    $dir = $null
+    try { $dir = (& $sp config-dir | Select-Object -First 1) } catch { }
+    if ($dir) { $dir = "$dir".Trim() }
+    if (-not $dir -or -not (Test-Path $dir)) { $dir = Join-Path $env:APPDATA 'spicetify' }
+    return $dir
+}
+
 function Ask($question) {
     if ($Yes) { return $true }
     $answer = Read-Host "$question [Y/n]"
@@ -113,7 +122,7 @@ if ($installed -contains 'spotify') {
     if (Test-Path $sp) {
         $prev = $state.spicetifyPrevious
         $theme = if ($prev -and $prev.theme) { $prev.theme } else { 'SpicetifyDefault' }
-        $config = Split-Path (& $sp -c)
+        $config = Get-SpicetifyConfigDir $sp
         & $sp config current_theme $theme color_scheme $(if ($prev) { $prev.scheme } else { '' }) | Out-Null
         & $sp config extensions luckyz-snow.js- | Out-Null
         Remove-Item (Join-Path $config 'Themes\luckyz-christmas') -Recurse -Force -ErrorAction SilentlyContinue
