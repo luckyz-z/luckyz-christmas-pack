@@ -18,7 +18,8 @@ try { [Console]::OutputEncoding = $Utf8 } catch { }
 $VersionFile = Join-Path $Root 'VERSION'
 $Version = if (Test-Path $VersionFile) { (Get-Content $VersionFile -Raw).Trim() } else { 'dev' }
 if ($Only) { $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ }) }
-if ($Update) { $Yes = [switch]$true }
+$Retry = @()
+$CurrentComponent = ''
 
 $Components = [ordered]@{
     terminal    = 'Windows Terminal: snow background, Christmas colors, festive PowerShell prompt'
@@ -75,7 +76,7 @@ function Title($text) {
 }
 
 function Show-Snow([int]$frames = 22) {
-    if ($Yes -or -not $Fancy) { return }
+    if ($Yes -or $Update -or -not $Fancy) { return }
     try {
         $width = [Math]::Min([Console]::WindowWidth - 2, 70)
         $height = 8
@@ -138,7 +139,7 @@ function Show-Banner {
 }
 
 function Ask($question, [bool]$default = $true, $key = '') {
-    if ($Update) {
+    if ($Update -and $Retry -notcontains $CurrentComponent) {
         if ($key -like 'autostart:*') { return (Test-Path (Join-Path $StartupDir ("Luckyz Christmas - $($key.Substring(10)).lnk"))) }
         return $false
     }
@@ -220,10 +221,27 @@ function Set-Property($object, $name, $value) {
     else { $object | Add-Member -NotePropertyName $name -NotePropertyValue $value }
 }
 
+function Stop-Tool($pattern) {
+    $running = { Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match $pattern -and $_.ProcessId -ne $PID } }
+    & $running | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    for ($i = 0; $i -lt 12 -and (& $running); $i++) { Start-Sleep -Milliseconds 300 }
+}
+
 function Copy-Assets($name) {
+    $source = Join-Path $Assets $name
     $target = Join-Path $InstallDir $name
     New-Item -ItemType Directory $target -Force | Out-Null
-    Copy-Item (Join-Path $Assets "$name\*") $target -Recurse -Force
+    foreach ($file in Get-ChildItem $source -Recurse -File) {
+        $destination = Join-Path $target $file.FullName.Substring($source.Length).TrimStart('\')
+        New-Item -ItemType Directory (Split-Path $destination) -Force | Out-Null
+        for ($attempt = 1; $attempt -le 6; $attempt++) {
+            try { Copy-Item $file.FullName $destination -Force -ErrorAction Stop; break }
+            catch {
+                if ($attempt -eq 6) { throw }
+                Start-Sleep -Milliseconds 700
+            }
+        }
+    }
     return $target
 }
 
@@ -302,6 +320,7 @@ function Install-Terminal {
 }
 
 function Install-Taskbar {
+    Stop-Tool 'taskbar-decor'
     $dir = Copy-Assets 'taskbar'
     $script = Join-Path $dir 'taskbar-decor.ps1'
     if (Ask 'Start the taskbar lights automatically when you sign in?' $true 'autostart:Taskbar Lights') { New-Autostart 'Taskbar Lights' $script 6 }
@@ -323,6 +342,7 @@ function Install-Translucent {
 }
 
 function Install-Widget {
+    Stop-Tool 'nowplaying-widget'
     $dir = Copy-Assets 'widget'
     $script = Join-Path $dir 'nowplaying-widget.ps1'
     $corner = 'TopRight'
@@ -524,6 +544,7 @@ function Install-Icue {
         if (-not (Ask 'Install Corsair''s cuesdk Python library from PyPI?')) { return $false }
         Invoke-Quiet $python.Source -m pip install --user --quiet cuesdk
     }
+    Stop-Tool 'christmas_lights'
     $dir = Copy-Assets 'icue'
     $script = Join-Path $dir 'christmas_lights.py'
     $pythonw = Join-Path (Split-Path $python.Source) 'pythonw.exe'
@@ -537,6 +558,9 @@ function Install-Icue {
 
 if ($Update) { Say "  Updating Luckyz Christmas Pack to version $Version" Cyan } else { Show-Banner }
 
+$previous = Get-State
+if ($Update -and $previous.PSObject.Properties['failed']) { $Retry = @($previous.failed) }
+
 $selected = @()
 if ($All) { $selected = @($Components.Keys) }
 elseif ($Only) { $selected = @($Only | ForEach-Object { $_.ToLower() } | Where-Object { $Components.Contains($_) }) }
@@ -549,16 +573,31 @@ foreach ($tool in 'uninstall.ps1', 'update.ps1', 'update.cmd') { Copy-Item (Join
 Set-StateValue 'version' $Version
 
 $results = [ordered]@{}
+$crashed = @()
 $step = 0
 foreach ($key in $selected) {
     $step++
+    $CurrentComponent = $key
     Title ("[{0}/{1}] Wrapping: {2}" -f $step, $selected.Count, $Components[$key])
     try {
         $ok = & "Install-$((Get-Culture).TextInfo.ToTitleCase($key))"
         $results[$key] = [bool]($ok | Select-Object -Last 1)
-        if ($results[$key]) { $state = Get-State; $done = @(); if ($state.PSObject.Properties['installed']) { $done = @($state.installed) }; Set-StateValue 'installed' @($done + $key | Select-Object -Unique) }
+        $state = Get-State
+        if ($results[$key]) {
+            $done = @(); if ($state.PSObject.Properties['installed']) { $done = @($state.installed) }
+            Set-StateValue 'installed' @($done + $key | Select-Object -Unique)
+        }
+        $pending = @(); if ($state.PSObject.Properties['failed']) { $pending = @($state.failed) }
+        Set-StateValue 'failed' @($pending | Where-Object { $_ -ne $key })
     }
-    catch { Say "  Failed: $($_.Exception.Message)" Red; $results[$key] = $false }
+    catch {
+        Say "  Failed: $($_.Exception.Message)" Red
+        $results[$key] = $false
+        $crashed += $key
+        $state = Get-State
+        $pending = @(); if ($state.PSObject.Properties['failed']) { $pending = @($state.failed) }
+        Set-StateValue 'failed' @($pending + $key | Select-Object -Unique)
+    }
 }
 
 Write-Host ''
@@ -566,10 +605,15 @@ Rule
 Say "  $($G.bell) Your presents" Cyan
 foreach ($key in $results.Keys) {
     if ($results[$key]) { Say ("   {0}  unwrapped  {1}" -f $G.gift, $key) Green }
-    else { Say ("   {0}  coal       {1}  (skipped)" -f $G.sock, $key) Yellow }
+    elseif ($crashed -contains $key) { Say ("   {0}  coal       {1}  (failed, update.cmd will try again)" -f $G.sock, $key) Red }
+    else { Say ("   {0}  skipped    {1}" -f $G.sock, $key) Yellow }
 }
 Write-Host ''
 Show-Snow 14
 Say "  $($G.tree) Merry Christmas! $($G.tree)" Red
 Say "  To update later: powershell -ExecutionPolicy Bypass -File `"$InstallDir\update.ps1`"" DarkGray
 Say "  To undo everything later: powershell -ExecutionPolicy Bypass -File `"$InstallDir\uninstall.ps1`"" DarkGray
+if ($crashed) {
+    Say "  Not everything finished ($($crashed -join ', ')). Run update.cmd to try those again." Yellow
+    exit 2
+}

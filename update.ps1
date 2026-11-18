@@ -26,8 +26,11 @@ if (-not (Test-Path $StatePath)) {
 }
 
 $state = Get-Content $StatePath -Raw | ConvertFrom-Json
-$parts = @()
-if ($state.PSObject.Properties['installed']) { $parts = @($state.installed) | Where-Object { $_ -and $_ -ne 'translucent' } }
+$installedParts = @()
+if ($state.PSObject.Properties['installed']) { $installedParts = @($state.installed) | Where-Object { $_ -and $_ -ne 'translucent' } }
+$failedParts = @()
+if ($state.PSObject.Properties['failed']) { $failedParts = @($state.failed) | Where-Object { $_ } }
+$parts = @($installedParts + $failedParts | Select-Object -Unique)
 $current = ConvertTo-Version $(if ($state.PSObject.Properties['version']) { $state.version } else { '0' })
 
 try {
@@ -44,13 +47,19 @@ Say "  Latest version:    $latest" Gray
 
 if ($Check) {
     if ($latest -gt $current) { Say '  An update is available. Run update.ps1 to get it.' Yellow }
+    elseif ($state.PSObject.Properties['failed'] -and @($state.failed).Count) { Say "  Up to date, but these did not finish last time: $(@($state.failed) -join ', '). Run update.ps1 to retry." Yellow }
     else { Say '  You are up to date.' Green }
     return
 }
 
-if ($latest -le $current -and -not $Force) {
+$behind = $latest -gt $current -or $Force
+if (-not $behind -and -not $failedParts) {
     Say '  You are up to date. Merry Christmas!' Green
     return
+}
+if (-not $behind) {
+    Say "  Some parts did not finish last time: $($failedParts -join ', '). Trying them again." Yellow
+    $parts = $failedParts
 }
 
 if (-not $parts) {
@@ -70,7 +79,8 @@ try {
 
     Say "  Updating: $($parts -join ', ')" Cyan
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root.FullName 'install.ps1') -Update -Only ($parts -join ',')
-    Say '  Updated. Some apps (Spotify, Discord, VS Code) may need a restart to show the changes.' Green
+    if ($LASTEXITCODE -eq 0) { Say '  Updated. Some apps (Spotify, Discord, VS Code) may need a restart to show the changes.' Green }
+    else { Say '  Finished, but some parts did not complete. See the messages above, then run update.ps1 again.' Yellow }
 }
 catch {
     Say "  The update did not finish: $($_.Exception.Message)" Red
