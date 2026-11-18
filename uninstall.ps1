@@ -102,10 +102,9 @@ if ($installed -contains 'spotify') {
     if (Test-Path $sp) {
         $prev = $state.spicetifyPrevious
         $theme = if ($prev -and $prev.theme) { $prev.theme } else { 'SpicetifyDefault' }
-        $ext = if ($prev -and $prev.extensions) { $prev.extensions } else { '' }
         $config = Split-Path (& $sp -c)
         & $sp config current_theme $theme color_scheme $(if ($prev) { $prev.scheme } else { '' }) | Out-Null
-        & $sp config extensions $ext | Out-Null
+        & $sp config extensions luckyz-snow.js- | Out-Null
         Remove-Item (Join-Path $config 'Themes\luckyz-christmas') -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item (Join-Path $config 'Extensions\luckyz-snow.js') -Force -ErrorAction SilentlyContinue
         Get-Process Spotify -ErrorAction SilentlyContinue | Stop-Process -Force
