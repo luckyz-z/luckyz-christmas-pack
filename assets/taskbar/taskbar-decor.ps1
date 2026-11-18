@@ -5,13 +5,51 @@ if (-not $SnapshotPath) {
     if (-not $script:mutex.WaitOne(0)) { exit }
 }
 Add-Type @'
-using System; using System.Runtime.InteropServices;
+using System; using System.Runtime.InteropServices; using System.Text;
+public struct NativeRect { public int Left, Top, Right, Bottom; }
 public class TbWin {
   [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
   [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr h, int i, int v);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint f);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out NativeRect r);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int state);
 }
 '@
+
+function Get-CoveredScreens {
+    $fg = [TbWin]::GetForegroundWindow()
+    if ($fg -eq [IntPtr]::Zero) { return @() }
+    $name = New-Object System.Text.StringBuilder 64
+    [void][TbWin]::GetClassName($fg, $name, 64)
+    if ($name.ToString() -in 'Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_SecondaryTrayWnd') { return @() }
+    $r = New-Object NativeRect
+    if (-not [TbWin]::GetWindowRect($fg, [ref]$r)) { return @() }
+    return @([System.Windows.Forms.Screen]::AllScreens | Where-Object {
+            $r.Left -le $_.Bounds.Left -and $r.Top -le $_.Bounds.Top -and $r.Right -ge $_.Bounds.Right -and $r.Bottom -ge $_.Bounds.Bottom
+        } | ForEach-Object { $_.DeviceName })
+}
+
+function Update-Visibility {
+    $state = 0
+    [void][TbWin]::SHQueryUserNotificationState([ref]$state)
+    $hideAll = $state -in 3, 4
+    $covered = Get-CoveredScreens
+    foreach ($w in $wins) {
+        $screen = [System.Windows.Forms.Screen]::AllScreens | Where-Object { $_.DeviceName -eq $w.ScreenName } | Select-Object -First 1
+        $barHeight = if ($screen) { $screen.Bounds.Bottom - $screen.WorkingArea.Bottom } else { 0 }
+        $hide = $hideAll -or ($covered -contains $w.ScreenName) -or ($barHeight -le 0)
+        if ($hide) {
+            if ($w.IsVisible) { $w.Hide() }
+        }
+        else {
+            $w.Left = $screen.Bounds.Left
+            $w.Top = $screen.WorkingArea.Bottom - 11
+            if (-not $w.IsVisible) { $w.Show() }
+        }
+    }
+}
 
 $bc = [Windows.Media.BrushConverter]::new()
 $H = 40
@@ -74,11 +112,16 @@ foreach ($s in [System.Windows.Forms.Screen]::AllScreens) {
         $ex = [TbWin]::GetWindowLong($h, -20)
         [void][TbWin]::SetWindowLong($h, -20, ($ex -bor 0x80 -bor 0x08000000 -bor 0x20))
     })
+    $w | Add-Member -NotePropertyName ScreenName -NotePropertyValue $s.DeviceName
     $wins += $w
 }
 $rnd = New-Object System.Random
 $tw = New-Object Windows.Threading.DispatcherTimer; $tw.Interval = [TimeSpan]::FromMilliseconds(700)
 $tw.Add_Tick({ foreach ($w in $wins) { foreach ($b in $w.Bulbs) { $b.Opacity = 0.55 + 0.45 * $rnd.NextDouble() } } })
 $tw.Start()
+$tv = New-Object Windows.Threading.DispatcherTimer; $tv.Interval = [TimeSpan]::FromMilliseconds(500)
+$tv.Add_Tick({ try { Update-Visibility } catch { } })
+$tv.Start()
 foreach ($w in $wins) { $w.Show() }
+Update-Visibility
 [Windows.Threading.Dispatcher]::Run()
