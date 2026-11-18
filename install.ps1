@@ -3,7 +3,8 @@ param(
     [string[]]$Only,
     [switch]$All,
     [switch]$Yes,
-    [switch]$List
+    [switch]$List,
+    [switch]$Update
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +15,10 @@ $StatePath = Join-Path $InstallDir 'state.json'
 $StartupDir = [Environment]::GetFolderPath('Startup')
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 try { [Console]::OutputEncoding = $Utf8 } catch { }
+$VersionFile = Join-Path $Root 'VERSION'
+$Version = if (Test-Path $VersionFile) { (Get-Content $VersionFile -Raw).Trim() } else { 'dev' }
+if ($Only) { $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ }) }
+if ($Update) { $Yes = [switch]$true }
 
 $Components = [ordered]@{
     terminal    = 'Windows Terminal: snow background, Christmas colors, festive PowerShell prompt'
@@ -126,7 +131,11 @@ function Show-Banner {
     Rule
 }
 
-function Ask($question, [bool]$default = $true) {
+function Ask($question, [bool]$default = $true, $key = '') {
+    if ($Update) {
+        if ($key -like 'autostart:*') { return (Test-Path (Join-Path $StartupDir ("Luckyz Christmas - $($key.Substring(10)).lnk"))) }
+        return $false
+    }
     if ($Yes) { return $default }
     $hint = if ($default) { 'Y/n' } else { 'y/N' }
     Write-Host "  $($G.santa) $question " -NoNewline -ForegroundColor Yellow
@@ -289,7 +298,7 @@ function Install-Terminal {
 function Install-Taskbar {
     $dir = Copy-Assets 'taskbar'
     $script = Join-Path $dir 'taskbar-decor.ps1'
-    if (Ask 'Start the taskbar lights automatically when you sign in?') { New-Autostart 'Taskbar Lights' $script 6 }
+    if (Ask 'Start the taskbar lights automatically when you sign in?' $true 'autostart:Taskbar Lights') { New-Autostart 'Taskbar Lights' $script 6 }
     Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'taskbar-decor' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Hidden 'powershell.exe' "-STA -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
     Say 'Taskbar lights are running.' Green
@@ -311,11 +320,13 @@ function Install-Widget {
     $dir = Copy-Assets 'widget'
     $script = Join-Path $dir 'nowplaying-widget.ps1'
     $corner = 'TopRight'
-    if (-not $Yes) {
+    if ($Update) { $saved = (Get-State).widgetCorner; if ($saved) { $corner = $saved } }
+    elseif (-not $Yes) {
         $choice = Read-Host 'Which corner for the widget? TopRight, TopLeft, BottomRight, BottomLeft [TopRight]'
         if ($choice -in 'TopRight', 'TopLeft', 'BottomRight', 'BottomLeft') { $corner = $choice }
     }
-    if (Ask 'Start the widget automatically when you sign in?') { New-Autostart 'Now Playing Widget' $script 8 $false "-Corner $corner" }
+    Set-StateValue 'widgetCorner' $corner
+    if (Ask 'Start the widget automatically when you sign in?' $true 'autostart:Now Playing Widget') { New-Autostart 'Now Playing Widget' $script 8 $false "-Corner $corner" }
     Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'nowplaying-widget' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Hidden 'powershell.exe' "-STA -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Corner $corner"
     Say 'The widget is running. Play something on Spotify to see it.' Green
@@ -450,7 +461,7 @@ function Install-Discord {
     Write-Json $settingsPath $settings
     foreach ($b in $branches) {
         $update = Join-Path $env:LOCALAPPDATA "$($b.Dir)\Update.exe"
-        if ((Test-Path $update) -and -not (Get-Process $b.Process -ErrorAction SilentlyContinue)) { Start-Process $update -ArgumentList '--processStart', "$($b.Process).exe" }
+        if ((Test-Path $updater) -and -not (Get-Process $b.Process -ErrorAction SilentlyContinue)) { Start-Process $updater -ArgumentList '--processStart', "$($b.Process).exe" }
     }
     Say 'Discord theme installed. Press Ctrl+R in Discord if it does not appear.' Green
     return $true
@@ -460,20 +471,23 @@ function Install-Icue {
     $python = Get-Command python -ErrorAction SilentlyContinue
     if (-not $python) { Say 'Python 3 is needed for the lighting effect. Install it from python.org and run this again.' Yellow; return $false }
     if (-not (Get-Process iCUE -ErrorAction SilentlyContinue)) { Say 'iCUE does not seem to be running. Start it, and turn on Settings > Enable SDK.' Yellow }
-    if (-not (Ask 'Install Corsair''s cuesdk Python library from PyPI?')) { return $false }
-    & $python.Source -m pip install --user --quiet cuesdk 2>&1 | Out-Null
+    & $python.Source -c 'import cuesdk' 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        if (-not (Ask 'Install Corsair''s cuesdk Python library from PyPI?')) { return $false }
+        & $python.Source -m pip install --user --quiet cuesdk 2>&1 | Out-Null
+    }
     $dir = Copy-Assets 'icue'
     $script = Join-Path $dir 'christmas_lights.py'
     $pythonw = Join-Path (Split-Path $python.Source) 'pythonw.exe'
     if (-not (Test-Path $pythonw)) { $pythonw = $python.Source }
-    if (Ask 'Start the lighting automatically when you sign in?') { New-Autostart 'iCUE Lighting' @{ Interpreter = $pythonw; Script = $script } 30 $true }
+    if (Ask 'Start the lighting automatically when you sign in?' $true 'autostart:iCUE Lighting') { New-Autostart 'iCUE Lighting' @{ Interpreter = $pythonw; Script = $script } 30 $true }
     Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'christmas_lights' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Hidden $pythonw "`"$script`""
     Say 'Lighting started. In iCUE make sure Settings > Enable SDK is on.' Green
     return $true
 }
 
-Show-Banner
+if ($Update) { Say "  Updating Luckyz Christmas Pack to version $Version" Cyan } else { Show-Banner }
 
 $selected = @()
 if ($All) { $selected = @($Components.Keys) }
@@ -483,7 +497,8 @@ else { $selected = @(Select-Presents) }
 if (-not $selected) { Say "  $($G.sock) Nothing selected. Maybe next year!" Yellow; return }
 
 New-Item -ItemType Directory $InstallDir -Force | Out-Null
-Copy-Item (Join-Path $Root 'uninstall.ps1') $InstallDir -Force -ErrorAction SilentlyContinue
+foreach ($tool in 'uninstall.ps1', 'update.ps1', 'update.cmd') { Copy-Item (Join-Path $Root $tool) $InstallDir -Force -ErrorAction SilentlyContinue }
+Set-StateValue 'version' $Version
 
 $results = [ordered]@{}
 $step = 0
@@ -508,4 +523,5 @@ foreach ($key in $results.Keys) {
 Write-Host ''
 Show-Snow 14
 Say "  $($G.tree) Merry Christmas! $($G.tree)" Red
+Say "  To update later: powershell -ExecutionPolicy Bypass -File `"$InstallDir\update.ps1`"" DarkGray
 Say "  To undo everything later: powershell -ExecutionPolicy Bypass -File `"$InstallDir\uninstall.ps1`"" DarkGray
