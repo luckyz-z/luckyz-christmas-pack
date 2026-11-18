@@ -25,6 +25,7 @@ Pick only the presents you want. Each one is optional, and the installer fetches
 | 💡 | **Taskbar lights** | String lights and a snow drift along the taskbar, on every monitor |
 | 🪟 | **Transparent taskbar** | Installs [TranslucentTB](https://github.com/TranslucentTB/TranslucentTB) so the taskbar goes clear |
 | 🎵 | **Now-playing widget** | A cute desktop card with your Spotify song, album art, a Santa hat and a candy-cane progress bar |
+| 🎨 | **App icons** | Christmas Discord, Canary, Steam, Edge, VS Code, Spotify and File Explorer icons with a Santa hat, snow and a candy-cane border |
 | 📝 | **VS Code** | A Christmas color theme and custom file icons (Lua is a candy cane, JS is a gold bauble) |
 | 🎧 | **Spotify** | Christmas theme with falling snow and click sparkles, using [Spicetify](https://spicetify.app). When it finishes it offers to open the [Christmas playlist](https://open.spotify.com/playlist/4DxlVuyC6plRuGTdobl8MP) that goes with this pack |
 | 💬 | **Discord** | Christmas theme with a garland and snow, using [Vencord](https://vencord.dev) |
@@ -51,6 +52,10 @@ Pick only the presents you want. Each one is optional, and the installer fetches
 <br><br>
 
 <img src="docs/vscode-icons.png" alt="Christmas file icons for VS Code" width="760">
+
+<br><br>
+
+<img src="docs/app-icons.png" alt="Christmas app icons" width="900">
 
 </div>
 
@@ -116,7 +121,7 @@ You get a checklist. Type numbers to toggle presents, press Enter, and it does t
 .\install.ps1 -List
 ```
 
-Part names: `terminal`, `taskbar`, `translucent`, `widget`, `vscode`, `spotify`, `discord`, `icue`.
+Part names: `terminal`, `taskbar`, `translucent`, `widget`, `icons`, `vscode`, `spotify`, `discord`, `icue`.
 
 </details>
 
@@ -182,7 +187,7 @@ Apps change their internals now and then, so a theme can stop matching part of a
 
 </details>
 
-This is a fan project. It is not affiliated with Microsoft, Spotify, Discord, Corsair or any app it themes.
+This is a fan project. It is not affiliated with Microsoft, Spotify, Discord, Valve, Corsair or any app it themes. App logos are trademarks of their owners, and the app icons here are unofficial edits for personal use. If an owner asks for them to be removed, they will be.
 
 <div align="center">
 

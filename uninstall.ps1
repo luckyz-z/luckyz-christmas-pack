@@ -51,6 +51,17 @@ if ($installed -contains 'taskbar') { Stop-Matching 'taskbar-decor'; Remove-Auto
 if ($installed -contains 'widget') { Stop-Matching 'nowplaying-widget'; Remove-Autostart 'Now Playing Widget'; Say 'Removed the widget.' Green }
 if ($installed -contains 'icue') { Stop-Matching 'christmas_lights'; Remove-Autostart 'iCUE Lighting'; Say 'Removed iCUE lighting.' Green }
 
+if ($installed -contains 'icons') {
+    if ($state.PSObject.Properties['iconLinks']) {
+        foreach ($path in @($state.iconLinks)) {
+            $backup = "$path.luckyz-backup"
+            if (Test-Path $backup) { Move-Item $backup $path -Force }
+        }
+    }
+    Invoke-Quiet ie4uinit.exe -show
+    Say 'Restored the original app icons. Unpin any shortcuts you pinned from the Christmas folder.' Green
+}
+
 if ($installed -contains 'terminal' -and $state.PSObject.Properties['terminalPaths']) {
     $guids = '{c4a15731-2b6e-4d1f-9a0e-5e1d5a7c0c02}', '{c4a15731-2b6e-4d1f-9a0e-5e1d5a7c0c01}'
     foreach ($path in @($state.terminalPaths)) {

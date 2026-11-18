@@ -26,6 +26,7 @@ $Components = [ordered]@{
     taskbar     = 'Taskbar lights: string lights and snow drift along the taskbar'
     translucent = 'Transparent taskbar (installs TranslucentTB from the Microsoft Store via winget)'
     widget      = 'Spotify now-playing desktop widget with a candy-cane progress bar'
+    icons       = 'App icons: Christmas Discord, Steam, Edge, VS Code, Spotify and File Explorer icons'
     vscode      = 'VS Code: Christmas color theme and custom Christmas file icons'
     spotify     = 'Spotify: Christmas theme and snow (installs Spicetify if needed)'
     discord     = 'Discord: Christmas theme (uses Vencord, offers to install it)'
@@ -356,6 +357,77 @@ function Install-Widget {
     Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'nowplaying-widget' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Hidden 'powershell.exe' "-STA -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Corner $corner"
     Say 'The widget is running. Play something on Spotify to see it.' Green
+    return $true
+}
+
+function Set-LinkIcon($path, $icon) {
+    $shell = New-Object -ComObject WScript.Shell
+    $before = $shell.CreateShortcut($path)
+    $target = $before.TargetPath
+    $arguments = $before.Arguments
+    $link = $shell.CreateShortcut($path)
+    $link.IconLocation = "$icon,0"
+    $link.Save()
+    $after = $shell.CreateShortcut($path)
+    return (($after.TargetPath -eq $target) -and ($after.Arguments -eq $arguments) -and ($after.IconLocation -like "*$([IO.Path]::GetFileName($icon))*"))
+}
+
+function Find-StartLinks($name) {
+    $roots = @((Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'), (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs'))
+    $hits = @()
+    foreach ($root in $roots) {
+        if (Test-Path $root) { $hits += @(Get-ChildItem $root -Recurse -Filter "$name.lnk" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) }
+    }
+    return $hits
+}
+
+function Install-Icons {
+    $dir = Copy-Assets 'icons'
+    $apps = @(
+        @{ Icon = 'discord'; Label = 'Discord' },
+        @{ Icon = 'canary'; Label = 'Discord Canary' },
+        @{ Icon = 'steam'; Label = 'Steam' },
+        @{ Icon = 'vscode'; Label = 'Visual Studio Code' },
+        @{ Icon = 'edge'; Label = 'Microsoft Edge' },
+        @{ Icon = 'spotify'; Label = 'Spotify' },
+        @{ Icon = 'explorer'; Label = 'File Explorer' }
+    )
+    $user = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
+    $pinned = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'
+    $pinFolder = Join-Path $InstallDir 'pin-these'
+    if (Test-Path $pinFolder) { Remove-Item $pinFolder -Recurse -Force }
+    New-Item -ItemType Directory $pinFolder -Force | Out-Null
+    $changed = @()
+    $handled = @()
+    foreach ($app in $apps) {
+        $icon = Join-Path $dir "$($app.Icon).ico"
+        $links = @(Find-StartLinks $app.Label)
+        $pinnedLink = Join-Path $pinned "$($app.Label).lnk"
+        $editable = @($links | Where-Object { $_.StartsWith($user, [StringComparison]::OrdinalIgnoreCase) })
+        if (Test-Path $pinnedLink) { $editable += $pinnedLink }
+        foreach ($path in $editable) {
+            Backup-File $path
+            if (Set-LinkIcon $path $icon) { $changed += $path }
+            elseif (Test-Path "$path.luckyz-backup") { Copy-Item "$path.luckyz-backup" $path -Force }
+        }
+        $source = $links | Sort-Object { if ($_ -match 'Inc\\') { 0 } else { 1 } } | Select-Object -First 1
+        if ($source) {
+            $copy = Join-Path $pinFolder "$($app.Label).lnk"
+            Copy-Item $source $copy -Force
+            [void](Set-LinkIcon $copy $icon)
+        }
+        if ($editable -or $source) { $handled += $app.Label }
+    }
+    Set-StateValue 'iconLinks' @($changed)
+    if (-not $handled) {
+        Say 'None of the supported apps were found, so there was nothing to re-icon.' Yellow
+        return $false
+    }
+    Invoke-Quiet ie4uinit.exe -show
+    Say "Christmas icons applied for: $($handled -join ', ')." Green
+    Say 'Claude is a Store app, so Windows will not let its icon be changed. The icon file is in the icons folder if you want it.' Gray
+    Say 'Apps that are only open (not pinned) keep their old taskbar icon. To pin one with the Christmas icon: close it, then right-click its shortcut in the folder, choose Show more options, then Pin to taskbar.' Gray
+    if (Ask 'Open the folder with ready-to-pin shortcuts now?') { Start-Process explorer.exe $pinFolder }
     return $true
 }
 
