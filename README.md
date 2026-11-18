@@ -145,7 +145,7 @@ Every file the installer edits is backed up first (next to the original, ending 
 
 - Windows 10 or 11 with Windows PowerShell 5.1 (already included)
 - Each part needs its own app: Windows Terminal, VS Code, desktop Spotify from spotify.com, Discord, or Corsair iCUE with Python 3
-- Spotify: the Microsoft Store version of Spotify is not supported by Spicetify
+- Spotify: needs the desktop version from spotify.com. If you do not have it, the installer offers to install it for you (the Microsoft Store version cannot be themed)
 - iCUE: turn on Settings, then Enable SDK
 
 </details>

@@ -373,6 +373,41 @@ function Install-VSCode {
     return $true
 }
 
+function Install-DesktopSpotify {
+    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if ($admin) {
+        Say 'Spotify refuses to install from an administrator window. Open a normal PowerShell window and run this again.' Yellow
+        return $false
+    }
+    $spotify = Join-Path $env:APPDATA 'Spotify\Spotify.exe'
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Say 'Installing Spotify with winget...' Gray
+        Invoke-Quiet winget install --id Spotify.Spotify --exact --source winget --accept-package-agreements --accept-source-agreements
+    }
+    if (-not (Test-Path $spotify)) {
+        Say 'Downloading the Spotify installer from spotify.com...' Gray
+        $setup = Join-Path ([IO.Path]::GetTempPath()) 'SpotifyFullSetup.exe'
+        Invoke-WebRequest 'https://download.scdn.co/SpotifyFullSetup.exe' -OutFile $setup -UseBasicParsing
+        Start-Process $setup -Wait
+        Remove-Item $setup -Force -ErrorAction SilentlyContinue
+    }
+    if (-not (Test-Path $spotify)) {
+        Say 'Spotify did not install. Install it from spotify.com and run this again.' Yellow
+        return $false
+    }
+    $prefs = Join-Path $env:APPDATA 'Spotify\prefs'
+    if (-not (Test-Path $prefs)) {
+        Say 'Starting Spotify once so it can set itself up...' Gray
+        Start-Process $spotify
+        for ($i = 0; $i -lt 40 -and -not (Test-Path $prefs); $i++) { Start-Sleep 2 }
+    }
+    if (-not (Test-Path $prefs)) {
+        Say 'Open Spotify and sign in once, then run this again to theme it.' Yellow
+        return $false
+    }
+    return $true
+}
+
 function Get-Spicetify {
     $c = Get-Command spicetify -ErrorAction SilentlyContinue
     if ($c) { return $c.Source }
@@ -383,7 +418,13 @@ function Get-Spicetify {
 
 function Install-Spotify {
     $spotify = Join-Path $env:APPDATA 'Spotify\Spotify.exe'
-    if (-not (Test-Path $spotify)) { Say 'Spotify desktop (the installer from spotify.com, not the Microsoft Store version) was not found.' Yellow; return $false }
+    if (-not (Test-Path $spotify)) {
+        $store = Get-AppxPackage -Name 'SpotifyAB.SpotifyMusic' -ErrorAction SilentlyContinue
+        if ($store) { Say 'Only the Microsoft Store version of Spotify was found, and that one cannot be themed.' Yellow }
+        else { Say 'Desktop Spotify was not found.' Yellow }
+        if (-not (Ask 'Download and install desktop Spotify from spotify.com now?')) { return $false }
+        if (-not (Install-DesktopSpotify)) { return $false }
+    }
     $sp = Get-Spicetify
     if (-not $sp) {
         if (-not (Ask 'Spicetify is needed to theme Spotify. Download and install it from github.com/spicetify/cli?')) { return $false }
